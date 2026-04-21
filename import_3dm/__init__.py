@@ -129,6 +129,16 @@ class Import3dm(Operator, ImportHelper):
         default=False,
     ) # type: ignore
 
+    merge_brep_faces: BoolProperty(
+        name="Merge Faces",
+        description=(
+            "Merge all Brep faces into a single NURBS Surface object (default). "
+            "Uncheck to import each face as its own object, giving a faithful "
+            "one-to-one round-trip with the original surfaces."
+        ),
+        default=True,
+    ) # type: ignore
+
     import_pointset: BoolProperty(
         name="PointSet",
         description="Import PointSets.",
@@ -252,6 +262,9 @@ class Import3dm(Operator, ImportHelper):
         col2 = col.column()
         col2.enabled = self.import_brep
         col2.prop(self, "import_nurbs_surfaces")
+        col3 = col2.column()
+        col3.enabled = self.import_nurbs_surfaces
+        col3.prop(self, "merge_brep_faces")
         col.prop(self, "import_extrusions")
         col.prop(self, "import_subd")
         col.prop(self, "import_meshes")
