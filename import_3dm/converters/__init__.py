@@ -31,6 +31,7 @@ from typing import Any, Dict
 from .material import handle_materials, material_name, DEFAULT_RHINO_MATERIAL
 from .layers import handle_layers
 from .render_mesh import import_render_mesh
+from .nurbs_surface import import_nurbs_surface
 from .curve import import_curve
 from .views import handle_views
 from .groups import handle_groups
@@ -44,9 +45,41 @@ from . import utils
 Dictionary mapping between the Rhino file types and importer functions
 '''
 
+def import_brep_dispatch(context, ob, name, scale, options):
+    """Route Brep import to NURBS surfaces or render mesh based on options."""
+    if options.get("import_nurbs_surfaces", False):
+        result = import_nurbs_surface(context, ob, name, scale, options)
+        if result is not None:
+            return result
+        # Fall through to render mesh if NURBS conversion failed entirely
+    return import_render_mesh(context, ob, name, scale, options)
+
+
+class _ExtrusionAsBrepProxy:
+    """Wrap an Extrusion as a fake File3dmObject with Brep geometry for import_nurbs_surface."""
+    def __init__(self, ob):
+        self._ob = ob
+        self.Geometry = ob.Geometry.ToBrep(False)
+        self.Attributes = ob.Attributes
+
+    def __getattr__(self, name):
+        return getattr(self._ob, name)
+
+
+def import_extrusion_dispatch(context, ob, name, scale, options):
+    """Convert Extrusion to Brep, then route to NURBS or render mesh."""
+    if options.get("import_nurbs_surfaces", False):
+        proxy = _ExtrusionAsBrepProxy(ob)
+        if proxy.Geometry is not None:
+            result = import_nurbs_surface(context, proxy, name, scale, options)
+            if result is not None:
+                return result
+    return import_render_mesh(context, ob, name, scale, options)
+
+
 RHINO_TYPE_TO_IMPORT = {
-    r3d.ObjectType.Brep : import_render_mesh,
-    r3d.ObjectType.Extrusion : import_render_mesh,
+    r3d.ObjectType.Brep : import_brep_dispatch,
+    r3d.ObjectType.Extrusion : import_extrusion_dispatch,
     r3d.ObjectType.Mesh : import_render_mesh,
     r3d.ObjectType.SubD : import_render_mesh,
     r3d.ObjectType.Curve : import_curve,
@@ -98,6 +131,35 @@ def convert_object(
             data = data[0]
 
     mat_from_object = ob.Attributes.MaterialSource == r3d.ObjectMaterialSource.MaterialFromObject
+
+    # Separate-face NURBS import returns a list of data blocks — create one
+    # Blender object per face and return early (no single blender_object to finish).
+    if isinstance(data, list):
+        if link_materials_to == "PREFERENCES":
+            link_materials_to = bpy.context.preferences.edit.material_link
+            if link_materials_to == 'OBDATA':
+                link_materials_to = 'DATA'
+        for fi, face_data in enumerate(data):
+            face_data.materials.clear()
+            face_data.materials.append(rhinomat)
+            face_tags = utils.create_tag_dict(uuid.uuid1(), f"{ob.Attributes.Name}_f{fi}")
+            face_obj = utils.get_or_create_iddata(context.blend_data.objects, face_tags, face_data)
+            for slot in face_obj.material_slots:
+                slot.link = link_materials_to
+            face_obj.color = [x/255. for x in view_color]
+            for pair in ob.Attributes.GetUserStrings():
+                face_obj[pair[0]] = pair[1]
+            if not ob.Attributes.IsInstanceDefinitionObject:
+                try:
+                    if options.get("import_layers_as_empties", False):
+                        face_obj.parent = layer
+                        for col in layer.users_collection:
+                            col.objects.link(face_obj)
+                    else:
+                        layer.objects.link(face_obj)
+                except Exception:
+                    pass
+        return
 
     tags = utils.create_tag_dict(ob.Attributes.Id, ob.Attributes.Name)
     if data is not None:
