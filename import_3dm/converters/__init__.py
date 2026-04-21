@@ -31,6 +31,7 @@ from typing import Any, Dict
 from .material import handle_materials, material_name, DEFAULT_RHINO_MATERIAL
 from .layers import handle_layers
 from .render_mesh import import_render_mesh
+from .nurbs_surface import import_nurbs_surface
 from .curve import import_curve
 from .views import handle_views
 from .groups import handle_groups
@@ -44,8 +45,18 @@ from . import utils
 Dictionary mapping between the Rhino file types and importer functions
 '''
 
+def import_brep_dispatch(context, ob, name, scale, options):
+    """Route Brep import to NURBS surfaces or render mesh based on options."""
+    if options.get("import_nurbs_surfaces", False):
+        result = import_nurbs_surface(context, ob, name, scale, options)
+        if result is not None:
+            return result
+        # Fall through to render mesh if NURBS conversion failed entirely
+    return import_render_mesh(context, ob, name, scale, options)
+
+
 RHINO_TYPE_TO_IMPORT = {
-    r3d.ObjectType.Brep : import_render_mesh,
+    r3d.ObjectType.Brep : import_brep_dispatch,
     r3d.ObjectType.Extrusion : import_render_mesh,
     r3d.ObjectType.Mesh : import_render_mesh,
     r3d.ObjectType.SubD : import_render_mesh,

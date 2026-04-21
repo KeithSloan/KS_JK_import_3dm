@@ -119,6 +119,16 @@ class Import3dm(Operator, ImportHelper):
         default=True,
     ) # type: ignore
 
+    import_nurbs_surfaces: BoolProperty(
+        name="As NURBS Surfaces",
+        description=(
+            "Import Brep surfaces as Blender NURBS Surface objects instead of "
+            "render meshes. Trimming curves are not preserved. Falls back to "
+            "render mesh if a face cannot be converted."
+        ),
+        default=False,
+    ) # type: ignore
+
     import_pointset: BoolProperty(
         name="PointSet",
         description="Import PointSets.",
@@ -239,6 +249,9 @@ class Import3dm(Operator, ImportHelper):
         row = box.row()
         col = row.column()
         col.prop(self, "import_brep")
+        col2 = col.column()
+        col2.enabled = self.import_brep
+        col2.prop(self, "import_nurbs_surfaces")
         col.prop(self, "import_extrusions")
         col.prop(self, "import_subd")
         col.prop(self, "import_meshes")
