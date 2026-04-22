@@ -55,6 +55,43 @@ def import_brep_dispatch(context, ob, name, scale, options):
     return import_render_mesh(context, ob, name, scale, options)
 
 
+class _FakeBrepFace:
+    """Make a NurbsSurface look like a single BrepFace for import_nurbs_surface."""
+    def __init__(self, ns):
+        self._ns = ns
+
+    def UnderlyingSurface(self):
+        return self._ns
+
+
+class _FakeSingleFaceBrep:
+    """Make a NurbsSurface look like a single-face Brep geometry."""
+    def __init__(self, ns):
+        self.Faces = [_FakeBrepFace(ns)]
+        self.ObjectType = r3d.ObjectType.Brep
+
+
+class _SurfaceAsBrepProxy:
+    """Wrap a raw NurbsSurface File3dmObject as a fake single-face Brep."""
+    def __init__(self, ob):
+        self._ob = ob
+        self.Geometry = _FakeSingleFaceBrep(ob.Geometry)
+        self.Attributes = ob.Attributes
+
+    def __getattr__(self, name):
+        return getattr(self._ob, name)
+
+
+def import_surface_dispatch(context, ob, name, scale, options):
+    """Handle ObjectType.Surface (raw NurbsSurface) — written by export_nurbs_3dm."""
+    if options.get("import_nurbs_surfaces", False):
+        proxy = _SurfaceAsBrepProxy(ob)
+        result = import_nurbs_surface(context, proxy, name, scale, options)
+        if result is not None:
+            return result
+    return import_render_mesh(context, ob, name, scale, options)
+
+
 class _ExtrusionAsBrepProxy:
     """Wrap an Extrusion as a fake File3dmObject with Brep geometry for import_nurbs_surface."""
     def __init__(self, ob):
@@ -78,6 +115,7 @@ def import_extrusion_dispatch(context, ob, name, scale, options):
 
 
 RHINO_TYPE_TO_IMPORT = {
+    r3d.ObjectType.Surface : import_surface_dispatch,
     r3d.ObjectType.Brep : import_brep_dispatch,
     r3d.ObjectType.Extrusion : import_extrusion_dispatch,
     r3d.ObjectType.Mesh : import_render_mesh,
