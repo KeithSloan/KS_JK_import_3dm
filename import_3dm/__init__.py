@@ -22,11 +22,11 @@
 
 
 bl_info = {
-    "name": "Import Rhinoceros 3D",
+    "name": "KS_JK import_3dm",
     "author": "Nathan 'jesterKing' Letwory, Joel Putnam, Tom Svilans, Lukas Fertig, Bernd Moeller",
     "version": (0, 0, 18),
     "blender": (4, 2, 0),
-    "location": "File > Import > Rhinoceros 3D (.3dm)",
+    "location": "File > Import > KS_JK import_3dm (.3dm)",
     "description": "This addon lets you import Rhinoceros 3dm files in Blender 4.2 and later",
     "warning": "The importer doesn't handle all data in 3dm files yet",
     "wiki_url": "https://github.com/jesterKing/import_3dm",
@@ -51,7 +51,7 @@ from .read3dm import read_3dm
 class Import3dm(Operator, ImportHelper):
     """Import Rhinoceros 3D files (.3dm). Currently does render meshes only, more geometry and data to follow soon."""
     bl_idname = "import_3dm.some_data"  # important since its how bpy.ops.import_3dm.some_data is constructed
-    bl_label = "Import Rhinoceros 3D file"
+    bl_label = "KS_JK import_3dm"
     bl_options = {"REGISTER", "UNDO"}
 
     # ImportHelper mixin class uses this
