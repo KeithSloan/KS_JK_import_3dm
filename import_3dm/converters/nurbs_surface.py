@@ -63,11 +63,32 @@ def _face_to_nurbs(face):
 
 def _add_nurbs_spline(surf_data, ns, scale):
     """
-    Add a single NURBS spline to *surf_data* for one NurbsSurface (*ns*).
+    Add NURBS control points to *surf_data* for one NurbsSurface (*ns*).
 
-    Uses a single spline with all count_u × count_v control points and sets
-    point_count_u so Blender knows the U dimension.  This is more reliable
-    than creating multiple splines (one per V-row) in background/headless mode.
+    Blender NURBS surface format — Python API limitation
+    -----------------------------------------------------
+    Blender 5.x stores NURBS surfaces internally as a *single* spline containing
+    all count_u × count_v control points, with the U dimension recorded in the
+    internal field ``pntsu`` (exposed as the read-only ``point_count_u`` property).
+    This allows ``order_v`` to be set correctly (up to count_v) and cyclic flags
+    to be stored reliably on the combined surface.
+
+    The Python API provides no way to set ``point_count_u`` / ``pntsu`` directly
+    (it is flagged PROP_NOT_EDITABLE in Blender's RNA).  The only available path
+    from Python is the *multi-spline* format: one spline per V-row, each containing
+    count_u points.
+
+    Consequence: in multi-spline format Blender clamps ``order_v`` to 2 on every
+    individual spline (because each spline has pntsv=1, so the maximum meaningful
+    V-order for that spline is 1, floored to the minimum of 2).  Similarly,
+    ``use_cyclic_u`` / ``use_cyclic_v`` may not survive a save/reload cycle in
+    multi-spline layout on Blender 5.x.
+
+    Workaround: the true rhino values are stored as custom properties on the
+    Curve data block (``rhino_order_u``, ``rhino_order_v``, ``rhino_cyclic_u``,
+    ``rhino_cyclic_v``).  The exporter (export_nurbs_3dm.py) reads these when it
+    detects multi-spline format, allowing a correct roundtrip even though Blender
+    itself cannot represent the values natively from Python.
 
     Returns True on success, False if the surface is degenerate.
     """
@@ -118,6 +139,14 @@ def _add_nurbs_spline(surf_data, ns, scale):
         spline.use_cyclic_v = closed_v
         spline.use_endpoint_u = not closed_u
         spline.use_endpoint_v = not closed_v
+
+    # Store rhino NURBS properties as custom data on the surface block.
+    # Blender's multi-spline format clamps order_v to 2 and may lose cyclic flags,
+    # so the exporter reads these values back to ensure correct roundtrip.
+    surf_data["rhino_order_u"] = order_u
+    surf_data["rhino_order_v"] = order_v
+    surf_data["rhino_cyclic_u"] = 1 if closed_u else 0
+    surf_data["rhino_cyclic_v"] = 1 if closed_v else 0
 
     return True
 

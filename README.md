@@ -45,11 +45,35 @@ Rhino `Extrusion` objects (used for cylinders, boxes, and other prismatic
 shapes) are automatically converted to Brep before NURBS import, using the
 same face-handling logic as above.
 
+### Custom properties for roundtrip export
+
+When a surface is imported, four custom properties are stored on the Blender
+Curve data block to enable correct re-export via
+[Blender_Export_3DM](https://github.com/KeithSloan/Blender_Export_3DM):
+
+| Property | Meaning |
+|---|---|
+| `rhino_order_u` | NURBS order in U |
+| `rhino_order_v` | NURBS order in V |
+| `rhino_cyclic_u` | 1 if surface is closed in U, else 0 |
+| `rhino_cyclic_v` | 1 if surface is closed in V, else 0 |
+
+**Why this is necessary:** Blender 5.x stores NURBS surfaces natively as a
+single spline with `count_u × count_v` control points, but the Python API
+cannot create this format — `point_count_u` is read-only (`PROP_NOT_EDITABLE`).
+The only path from Python is multi-spline format (one spline per V-row), in
+which Blender clamps `order_v` to 2 on each spline and may lose cyclic flags.
+The custom properties preserve the original Rhino values so the exporter can
+reconstruct a geometrically correct `.3dm` file on roundtrip.
+
 Limitations
 -----------
 
 - Trimming curves are not preserved — the full underlying surface is imported
 - Non-uniform knot vectors are approximated with clamped/uniform knots
+- Imported surfaces are in multi-spline format (one spline per V-row); Blender
+  will display them correctly but `order_v` > 2 relies on the custom properties
+  above for correct re-export
 - If a face cannot be converted, it is skipped (or falls back silently to a
   render mesh if no faces convert at all)
 
