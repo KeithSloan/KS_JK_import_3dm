@@ -18,7 +18,7 @@ testfiles = [
 
 @pytest.fixture(scope="session", autouse=True)
 def enable_addon():
-    addon_utils.enable("import_3dm")
+    addon_utils.enable("ks_jk_import_3dm")
 
 
 # ############################################################################## #
@@ -27,4 +27,4 @@ def enable_addon():
 
 @pytest.mark.parametrize("filepath", testfiles)
 def test_create_article(filepath):
-    bpy.ops.import_3dm.some_data(filepath=filepath)
+    bpy.ops.ks_jk_import_3dm.some_data(filepath=filepath)

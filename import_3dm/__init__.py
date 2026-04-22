@@ -50,7 +50,7 @@ from .read3dm import read_3dm
 
 class Import3dm(Operator, ImportHelper):
     """Import Rhinoceros 3D files (.3dm). Currently does render meshes only, more geometry and data to follow soon."""
-    bl_idname = "import_3dm.some_data"  # important since its how bpy.ops.import_3dm.some_data is constructed
+    bl_idname = "ks_jk_import_3dm.some_data"
     bl_label = "KS_JK import_3dm"
     bl_options = {"REGISTER", "UNDO"}
 
@@ -327,7 +327,7 @@ class Import3dm(Operator, ImportHelper):
 class IO_FH_3dm_import(bpy.types.FileHandler):
     bl_idname = "IO_FH_3dm_import"
     bl_label = "File handler for Rhinoceros 3D file import"
-    bl_import_operator = "import_3dm.some_data"
+    bl_import_operator = "ks_jk_import_3dm.some_data"
     bl_file_extensions = ".3dm"
 
     @classmethod
@@ -339,7 +339,7 @@ class IO_FH_3dm_import(bpy.types.FileHandler):
 
 # Only needed if you want to add into a dynamic menu
 def menu_func_import(self, _ : bpy.types.Context):
-    self.layout.operator(Import3dm.bl_idname, text="Rhinoceros 3D (.3dm)")
+    self.layout.operator(Import3dm.bl_idname, text="KS_JK import_3dm (.3dm)")
 
 
 def register():
@@ -358,4 +358,4 @@ if __name__ == "__main__":
     register()
 
     # test call
-    bpy.ops.import_3dm.some_data('INVOKE_DEFAULT')
+    bpy.ops.ks_jk_import_3dm.some_data('INVOKE_DEFAULT')
