@@ -90,36 +90,34 @@ def _add_nurbs_spline(surf_data, ns, scale):
     order_u = min(max(ns.OrderU, 2), count_u)
     order_v = min(max(ns.OrderV, 2), count_v)
 
-    spline = surf_data.splines.new('NURBS')
-    spline.points.add(count_u * count_v - 1)  # new() already adds 1 point
-    spline.point_count_u = count_u
-
     for j in range(count_v):
+        spline = surf_data.splines.new('NURBS')
+        spline.points.add(count_u - 1)  # new() already adds 1 point
+
         for i in range(count_u):
             cp = ns.Points.GetControlPoint(i, j)  # returns Point4d directly
             w = cp.W
-            idx = j * count_u + i
             if is_rational and w and w != 0.0:
-                spline.points[idx].co = (
+                spline.points[i].co = (
                     cp.X / w * scale,
                     cp.Y / w * scale,
                     cp.Z / w * scale,
                     w,
                 )
             else:
-                spline.points[idx].co = (
+                spline.points[i].co = (
                     cp.X * scale,
                     cp.Y * scale,
                     cp.Z * scale,
                     1.0,
                 )
 
-    spline.order_u = order_u
-    spline.order_v = order_v
-    spline.use_cyclic_u = closed_u
-    spline.use_cyclic_v = closed_v
-    spline.use_endpoint_u = not closed_u
-    spline.use_endpoint_v = not closed_v
+        spline.order_u = order_u
+        spline.order_v = order_v
+        spline.use_cyclic_u = closed_u
+        spline.use_cyclic_v = closed_v
+        spline.use_endpoint_u = not closed_u
+        spline.use_endpoint_v = not closed_v
 
     return True
 
